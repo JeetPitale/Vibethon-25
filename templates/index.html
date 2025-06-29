@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Whisperer - AI Study Assistant</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Firebase CDN -->
+    <script src="https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js"></script>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Chart.js for Graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+    <style>
+        /* Define CSS Variables for theming */
+        body[data-theme="indigo"] {
+            --primary-color: #6366f1; /* indigo-500 */
+            --primary-color-rgb-shadow: 99, 102, 241;
+        }
+        body[data-theme="emerald"] {
+            --primary-color: #10b981; /* emerald-500 */
+            --primary-color-rgb-shadow: 16, 185, 129;
+        }
+        body[data-theme="rose"] {
+            --primary-color: #f43f5e; /* rose-500 */
+            --primary-color-rgb-shadow: 244, 63, 94;
+        }
+        body[data-theme="amber"] {
+            --primary-color: #f59e0b; /* amber-500 */
+            --primary-color-rgb-shadow: 245, 158, 11;
+        }
+
+
+        /* Base styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* slate-900 */
+            color: #cbd5e1; /* slate-300 */
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; /* slate-800 */ }
+        ::-webkit-scrollbar-thumb { background: var(--primary-color, #4f46e5); border-radius: 10px; } /* Use primary-color */
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary-color, #6366f1); opacity: 0.8; } /* Use primary-color */
+
+        /* Animation for content cards */
+        .card-enter {
+            animation: card-enter 0.5s ease-out forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        @keyframes card-enter {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Active navigation link style */
+        .nav-link.active {
+            background-color: var(--primary-color, #4f46e5); /* Use primary-color */
+            color: #fff;
+            box-shadow: 0 0 15px rgba(var(--primary-color-rgb-shadow, 79, 70, 229), 0.5); /* Dynamic shadow */
+        }
+
+        /* Hide page sections by default */
+        .page-content { display: none; }
+        .page-content.active { display: block; animation: fadeIn 0.5s ease; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Custom toggle switch */
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: var(--primary-color, #10b981); /* Use primary-color */
+        }
+        .toggle-checkbox:checked + .toggle-label::after {
+            transform: translateX(100%);
+        }
+
+        /* Header transparency effect */
+        #main-header.header-transparent {
+            background-color: rgba(30, 41, 59, 0.5); /* slate-800 with 50% opacity */
+            backdrop-filter: blur(8px); /* Apply blur effect */
+            transition: background-color 0.3s ease-in-out;
+        }
+
+        #main-header.header-opaque {
+            background-color: #1e293b; /* slate-800 solid */
+            backdrop-filter: blur(0);
+            transition: background-color 0.3s ease-in-out;
+        }
+
+        /* Responsive styles for achievement grid */
+        @media (min-width: 640px) {
+            #achievements .aspect-square {
+                padding-bottom: unset; /* Remove default padding-bottom from aspect-square utility */
+            }
+        }
+        /* Mic button active state */
+        .mic-active {
+            animation: pulse-mic 1.5s infinite;
+            background-color: var(--primary-color, #6366f1); /* Use primary-color for active state */
+        }
+
+        @keyframes pulse-mic {
+            0% { box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb-shadow, 99, 102, 241), 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(var(--primary-color-rgb-shadow, 99, 102, 241), 0); }
+            100% { box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb-shadow, 99, 102, 241), 0); }
+        }
+    </style>
+</head>
+<body class="text-gray-200">
+
+    <div class="flex h-screen bg-slate-900">
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="fixed inset-y-0 left-0 bg-slate-800/80 backdrop-blur-sm w-64 p-6 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-30">
+            <div class="text-center mb-10">
+                <h1 class="text-2xl font-extrabold">
+                    <span class="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-emerald-400">Exam Whisperer</span>
+                </h1>
+            </div>
+            <nav id="main-nav" class="flex flex-col space-y-3">
+                <a href="#" data-page-id="home" class="nav-link active flex items-center p-3 rounded-lg hover:bg-indigo-500 transition-colors duration-200"><i class="fas fa-home w-8 text-center"></i> Home</a>
+                <a href="#" data-page-id="dashboard" class="nav-link flex items-center p-3 rounded-lg hover:bg-indigo-500 transition-colors duration-200"><i class="fas fa-chart-line w-8 text-center"></i> Dashboard</a>
+                <a href="#" data-page-id="profile" class="nav-link flex items-center p-3 rounded-lg hover:bg-indigo-500 transition-colors duration-200"><i class="fas fa-user w-8 text-center"></i> Profile</a>
+                <a href="#" data-page-id="achievements" class="nav-link flex items-center p-3 rounded-lg hover:bg-indigo-500 transition-colors duration-200"><i class="fas fa-medal w-8 text-center"></i> Achievements</a>
+                <a href="#" data-page-id="history" class="nav-link flex items-center p-3 rounded-lg hover:bg-indigo-500 transition-colors duration-200"><i class="fas fa-history w-8 text-center"></i> History</a>
+                <a href="#" data-page-id="login" class="nav-link flex items-center p-3 rounded-lg hover:bg-indigo-500 transition-colors duration-200"><i class="fas fa-sign-in-alt w-8 text-center"></i> Login</a>
+                <a href="#" data-page-id="settings" class="nav-link flex items-center p-3 rounded-lg hover:bg-indigo-500 transition-colors duration-200"><i class="fas fa-cog w-8 text-center"></i> Settings</a>
+            </nav>
+            <button id="sidebar-logout-btn" class="mt-8 w-full text-sm text-red-400 hover:text-white hidden flex items-center justify-center p-3 rounded-lg">
+                <i class="fas fa-sign-out-alt mr-2"></i> Logout
+            </button>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Bar (for mobile) -->
+            <header id="main-header" class="md:hidden flex justify-between items-center bg-slate-800 p-4 shadow-lg z-20">
+                <h1 class="text-xl font-bold text-white">Exam Whisperer</h1>
+                <button id="hamburger-menu" class="text-white text-2xl">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </header>
+
+            <!-- Page Content Wrapper - All content sections are here -->
+            <div id="page-wrapper" class="flex-1 overflow-y-auto p-4 lg:p-8">
+
+                <!-- 1. Home / Ask AI Page -->
+                <div id="home" class="page-content active">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <main class="lg:col-span-2 space-y-8">
+                            <section class="bg-slate-800 rounded-2xl shadow-2xl p-6">
+                                <h2 class="text-2xl font-bold mb-4 text-emerald-400">🎙️ Ask Your Question</h2>
+                                <div class="relative flex flex-col sm:flex-row gap-4">
+                                    <button id="mic-button" class="bg-indigo-600 hover:bg-indigo-700 p-4 rounded-full transition-transform transform hover:scale-110">
+                                        <i class="fa-solid fa-microphone-lines text-2xl"></i>
+                                    </button>
+                                    <input type="text" id="question-input" placeholder="Explain anything..." class="w-full bg-slate-700 rounded-xl p-4 focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    <button id="ask-button" class="bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold py-4 px-8 rounded-xl">Ask</button>
+                                </div>
+                            </section>
+                            <section class="bg-slate-800 rounded-2xl shadow-2xl p-6">
+                                <h2 class="text-2xl font-bold mb-4 text-indigo-400">📘 AI's Answer</h2>
+                                <div id="ai-answer" class="prose prose-invert max-w-none">Your answer will appear here...</div>
+                            </section>
+                            <section class="bg-slate-800 rounded-2xl shadow-2xl p-6">
+                                <h2 class="text-2xl font-bold mb-4 text-yellow-400">🎯 Quiz Challenge</h2>
+                                <p class="mb-4">Quiz question based on the answer will appear here.</p>
+                                <div id="quiz-options" class="grid grid-cols-1 gap-4"></div>
+                            </section>
+                        </main>
+                        <aside class="space-y-8">
+                            <section class="bg-slate-800 rounded-2xl shadow-2xl p-6">
+                                <h2 class="text-2xl font-bold mb-6 text-center text-indigo-400">🏆 Your Progress</h2>
+                                <div class="text-center mb-6">
+                                    <p class="text-lg font-semibold">Level 12: Brainiac</p>
+                                    <div class="w-full bg-slate-700 rounded-full h-4 mt-2">
+                                        <div class="bg-emerald-400 h-4 rounded-full" style="width: 75%"></div>
+                                    </div>
+                                    <p class="text-sm mt-1">750 / 1000 XP</p>
+                                </div>
+                                <div class="grid grid-cols-3 gap-4 text-center">
+                                    <div><p class="text-slate-400">Points</p><p class="text-2xl font-bold">12.5k</p></div>
+                                    <div><p class="text-slate-400">Streak</p><p class="text-2xl font-bold">� 15</p></div>
+                                    <div><p class="text-slate-400">Quizzes</p><p class="text-2xl font-bold">28</p></div>
+                                </div>
+                            </section>
+                            <section class="bg-slate-800 rounded-2xl shadow-2xl p-6">
+                                <h2 class="text-2xl font-bold mb-4">📊 Session Tracker</h2>
+                                <div id="session-tracker" class="space-y-3 max-h-full overflow-y-auto pr-2"></div>
+                            </section>
+                        </aside>
+                    </div>
+                </div>
+
+                <!-- 2. Dashboard Page -->
+                <div id="dashboard" class="page-content">
+                    <h1 class="text-4xl font-bold text-white mb-8">Dashboard</h1>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="bg-slate-800 p-6 rounded-2xl">
+                            <h3 class="font-bold text-lg text-emerald-400 mb-2">XP Over Time</h3>
+                            <div class="h-48">
+                                <canvas id="xp-chart-canvas"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-slate-800 p-6 rounded-2xl">
+                            <h3 class="font-bold text-lg text-yellow-400 mb-2">Quiz Accuracy</h3>
+                            <div class="h-48">
+                                <canvas id="accuracy-chart-canvas"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-slate-800 p-6 rounded-2xl">
+                            <h3 class="font-bold text-lg text-indigo-400 mb-2">Stats</h3>
+                            <p>Level: <span class="font-bold">12</span></p>
+                            <p>Total Questions: <span class="font-bold">142</span></p>
+                            <p>Badges Earned: <span class="font-bold">3</span></p>
+                        </div>
+                    </div>
+                    <div class="bg-slate-800 p-6 rounded-2xl mt-6">
+                        <h3 class="font-bold text-lg text-white mb-4">Continue Learning</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <a href="#" class="bg-slate-700 p-4 rounded-lg hover:bg-slate-600 transition">Quantum Physics</a>
+                            <a href="#" class="bg-slate-700 p-4 rounded-lg hover:bg-slate-600 transition">Renaissance Art</a>
+                            <a href="#" class="bg-slate-700 p-4 rounded-lg hover:bg-slate-600 transition">JavaScript Promises</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Profile Page - "My Learning Avatar" -->
+                <div id="profile" class="page-content">
+                    <div class="max-w-4xl mx-auto space-y-8">
+                        <h1 class="text-4xl font-bold text-white mb-8">My Learning Avatar</h1>
+                        <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 sm:p-8 shadow-2xl shadow-indigo-500/20 relative overflow-hidden">
+                            <div class="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/10 rounded-full filter blur-3xl"></div>
+                            <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-indigo-500/10 rounded-full filter blur-3xl"></div>
+                            <div class="flex flex-col md:flex-row items-center gap-8 z-10 relative">
+                                <div class="relative flex-shrink-0">
+                                    <img id="avatar-preview" src="https://placehold.co/150x150/1e293b/a3a3a3?text=User" class="w-36 h-36 rounded-full border-4 border-indigo-500 object-cover" alt="Avatar">
+                                    <input type="file" id="avatar-upload" class="hidden" accept="image/*">
+                                    <button onclick="document.getElementById('avatar-upload').click()" class="absolute bottom-1 right-1 bg-emerald-500 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-emerald-600 transition transform hover:scale-110 focus:outline-none ring-2 ring-slate-800"><i class="fas fa-camera"></i></button>
+                                </div>
+                                <div class="flex-1 text-center md:text-left w-full">
+                                    <input type="text" id="user-name" value="Alex Doe" class="text-3xl sm:text-4xl font-bold bg-transparent focus:outline-none focus:bg-slate-700/50 rounded-lg px-2 py-1 w-full transition">
+                                    <p class="text-indigo-400 text-lg mt-1">Level 12: Brainiac</p>
+                                    <div class="mt-4"><p class="text-sm text-slate-300">XP Progress (750 / 1000)</p><div class="w-full bg-slate-700 rounded-full h-4 mt-1"><div class="bg-gradient-to-r from-emerald-400 to-indigo-500 h-4 rounded-full" style="width: 75%"></div></div></div>
+                                </div>
+                            </div>
+                            <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8 z-10 relative">
+                                <div class="space-y-4"><h3 class="text-xl font-bold text-white">Your Details</h3><div><label class="font-semibold text-slate-400">Email Address</label><input type="email" value="alex.doe@example.com" class="w-full bg-slate-700 p-3 rounded-lg mt-1 border-2 border-transparent focus:border-emerald-500 focus:outline-none transition"></div><div><label class="font-semibold text-slate-400">Learning Interests</label><div id="interest-tags" class="flex flex-wrap gap-2 mt-2"><span class="bg-indigo-500/50 text-indigo-200 px-3 py-1 rounded-full text-sm flex items-center gap-2">Science<button class="text-indigo-100 hover:text-white remove-tag">×</button></span><span class="bg-emerald-500/50 text-emerald-200 px-3 py-1 rounded-full text-sm flex items-center gap-2">History<button class="text-emerald-100 hover:text-white remove-tag">×</button></span><input type="text" id="add-interest-input" placeholder="+ Add tag" class="bg-slate-700/50 p-1 rounded-full text-sm w-24 focus:outline-none focus:ring-2 focus:ring-indigo-500 px-2 transition"></div></div><div><label class="font-semibold text-slate-400">Motivation Quote</label><textarea class="w-full bg-slate-700 p-3 rounded-lg mt-1 border-2 border-transparent focus:border-emerald-500 focus:outline-none transition" rows="3">"The expert in anything was once a beginner."</textarea></div></div>
+                                <div class="space-y-4"><h3 class="text-xl font-bold text-white">Earned Titles</h3><div class="space-y-3"><div class="bg-slate-700/50 p-3 rounded-lg flex items-center gap-3 transition hover:bg-slate-700"><i class="fas fa-bolt text-yellow-400"></i><span>Quiz Master</span></div><div class="bg-slate-700/50 p-3 rounded-lg flex items-center gap-3 transition hover:bg-slate-700"><i class="fas fa-lightbulb text-emerald-400"></i><span>Fast Learner</span></div><div class="bg-slate-700/50 p-3 rounded-lg flex items-center gap-3 transition hover:bg-slate-700"><i class="fas fa-star text-indigo-400"></i><span>Topic Explorer</span></div></div></div>
+                            </div><button id="save-profile-btn" class="w-full mt-8 bg-emerald-500 text-slate-900 font-bold p-3 rounded-lg hover:bg-emerald-600 transition transform hover:scale-105">Save Profile</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Achievements Page -->
+                <div id="achievements" class="page-content">
+                     <h1 class="text-4xl font-bold text-white mb-8">Achievements</h1>
+                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                        <!-- Achieved -->
+                        <div class="bg-slate-800 p-4 rounded-2xl text-center flex flex-col items-center justify-center aspect-square" title="Quick Learner: Answer 10 questions.">
+                            <i class="fas fa-bolt text-5xl text-yellow-400"></i>
+                            <p class="mt-2 font-bold">Quick Learner</p>
+                        </div>
+                        <div class="bg-slate-800 p-4 rounded-2xl text-center flex flex-col items-center justify-center aspect-square" title="Curious Mind: Ask about 5 different topics.">
+                            <i class="fas fa-lightbulb text-5xl text-emerald-400"></i>
+                            <p class="mt-2 font-bold">Curious Mind</p>
+                        </div>
+                        <div class="bg-slate-800 p-4 rounded-2xl text-center flex flex-col items-center justify-center aspect-square" title="Scholar: Complete 25 quizzes.">
+                            <i class="fas fa-graduation-cap text-5xl text-indigo-400"></i>
+                            <p class="mt-2 font-bold">Scholar</p>
+                        </div>
+                        <!-- Locked -->
+                        <div class="bg-slate-800/50 p-4 rounded-2xl text-center flex flex-col items-center justify-center aspect-square opacity-50" title="Streak Master: Maintain a 7-day streak. (Locked)">
+                            <i class="fas fa-star text-5xl text-slate-500"></i>
+                            <p class="mt-2 font-bold">Streak Master</p>
+                        </div>
+                        <div class="bg-slate-800/50 p-4 rounded-2xl text-center flex flex-col items-center justify-center aspect-square opacity-50" title="Master Explainer: Get 5 answers marked as helpful. (Locked)">
+                            <i class="fas fa-feather-alt text-5xl text-slate-500"></i>
+                            <p class="mt-2 font-bold">Master Explainer</p>
+                        </div>
+                        <div class="bg-slate-800/50 p-4 rounded-2xl text-center flex flex-col items-center justify-center aspect-square opacity-50" title="Polymath: Explore 10 different subjects. (Locked)">
+                            <i class="fas fa-atom text-5xl text-slate-500"></i>
+                            <p class="mt-2 font-bold">Polymath</p>
+                        </div>
+                     </div>
+                </div>
+
+                <!-- 5. Settings Page – “Control Center” -->
+                <div id="settings" class="page-content">
+                    <div class="max-w-3xl mx-auto space-y-8">
+                        <h1 class="text-4xl font-bold text-white mb-8">Control Center</h1>
+                        <div class="bg-slate-800 rounded-2xl shadow-xl p-6 sm:p-8"><h3 class="text-2xl font-bold text-white mb-6">General</h3><div class="space-y-5"><div class="flex justify-between items-center"><span class="font-semibold">Dark Mode</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" class="sr-only peer toggle-checkbox" checked><div class="w-11 h-6 bg-slate-600 rounded-full toggle-label peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div></label></div><div class="flex justify-between items-center"><span class="font-semibold">Sound Effects</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" class="sr-only peer toggle-checkbox" checked><div class="w-11 h-6 bg-slate-600 rounded-full toggle-label peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div></label></div><div class="flex justify-between items-center"><span class="font-semibold">Voice Assistant</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" class="sr-only peer toggle-checkbox"><div class="w-11 h-6 bg-slate-600 rounded-full toggle-label peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div></label></div><div class="flex justify-between items-center"><span class="font-semibold">Push Notifications</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" class="sr-only peer toggle-checkbox" checked><div class="w-11 h-6 bg-slate-600 rounded-full toggle-label peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div></label></div></div></div>
+                        <div class="bg-slate-800 rounded-2xl shadow-xl p-6 sm:p-8"><h3 class="text-2xl font-bold text-white mb-6">Appearance</h3><div class="space-y-6"><div><label for="voice-select" class="font-semibold">Assistant Voice</label><select id="voice-select" class="w-full bg-slate-700 p-3 rounded-lg mt-2 border-2 border-transparent focus:border-indigo-500 focus:outline-none transition"><option>Jarvis (Default)</option><option>Samantha</option><option>Echo</option></select></div><div><label class="font-semibold">Color Theme</label><div id="color-theme-buttons" class="flex gap-4 mt-2"><button class="w-10 h-10 rounded-full bg-indigo-500 ring-2 ring-offset-2 ring-offset-slate-800 ring-white transition transform hover:scale-110" data-theme-color="indigo" title="Indigo"></button><button class="w-10 h-10 rounded-full bg-emerald-500 transition transform hover:scale-110" data-theme-color="emerald" title="Emerald"></button><button class="w-10 h-10 rounded-full bg-rose-500 transition transform hover:scale-110" data-theme-color="rose" title="Rose"></button><button class="w-10 h-10 rounded-full bg-amber-500 transition transform hover:scale-110" data-theme-color="amber" title="Amber"></button></div></div></div></div>
+                        <div class="bg-slate-800 rounded-2xl shadow-xl p-6 sm:p-8"><h3 class="text-2xl font-bold text-white mb-6">Privacy</h3><div class="space-y-4"><label class="flex items-center gap-4 cursor-pointer"><input type="checkbox" class="w-5 h-5 bg-slate-700 border-slate-600 rounded text-indigo-500 focus:ring-indigo-500 transition"><span class="font-semibold">Share progress with friends</span></label><label class="flex items-center gap-4 cursor-pointer"><input type="checkbox" class="w-5 h-5 bg-slate-700 border-slate-600 rounded text-indigo-500 focus:ring-indigo-500 transition" checked><span class="font-semibold">Enable leaderboard ranking</span></label></div></div>
+                        <button id="save-settings-btn" class="w-full mt-8 bg-emerald-500 text-slate-900 font-bold p-4 rounded-lg hover:bg-emerald-600 transition flex items-center justify-center gap-3 text-lg"><i class="fas fa-save"></i><span>Save Settings</span></button>
+                    </div>
+                </div>
+
+                <!-- 6. History Page -->
+                <div id="history" class="page-content">
+                    <h1 class="text-4xl font-bold text-white mb-8">Question History</h1>
+                    <div id="history-list" class="space-y-4">
+                        <!-- History items will be dynamically added here or use existing mock data -->
+                        <a href="#" class="block bg-slate-800 p-4 rounded-lg hover:bg-slate-700 transition">
+                            <p class="font-bold text-emerald-400">Q: What is mitosis?</p>
+                            <p class="text-slate-400 text-sm mt-1">A: A type of cell division that results in two daughter cells...</p>
+                        </a>
+                        <a href="#" class="block bg-slate-800 p-4 rounded-lg hover:bg-slate-700 transition">
+                            <p class="font-bold text-emerald-400">Q: Who wrote 'Romeo and Juliet'?</p>
+                            <p class="text-slate-400 text-sm mt-1">A: William Shakespeare...</p>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 7. Login Page -->
+                <div id="login" class="page-content">
+                    <div class="max-w-md mx-auto mt-12 p-6 bg-slate-800 rounded-xl shadow-xl space-y-4">
+                        <h1 class="text-3xl font-bold text-center text-white">Authentication Status</h1>
+                        <p id="user-status" class="text-center text-lg text-slate-400 mt-2">Loading authentication status...</p>
+                        <button id="login-btn"
+                                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition hidden">
+                            Sign In Anonymously
+                        </button>
+                        <button id="logout-btn"
+                                class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition hidden">
+                            Logout
+                        </button>
+                        <p class="text-center text-xs text-slate-500 mt-4">
+                            *This app uses anonymous sign-in for simplicity. Your progress is tied to your browser session unless you clear site data.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    
+
+    <script type="module">
+        // Firebase imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+        // Import Firestore if needed for future tasks
+        // import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+
+
+        // --- Global Elements ---
+        const navLinks = document.querySelectorAll('.nav-link');
+        const pages = document.querySelectorAll('.page-content'); // Select all page content divs
+        const sidebar = document.getElementById('sidebar');
+        const hamburgerMenu = document.getElementById('hamburger-menu');
+        const mainHeader = document.getElementById('main-header');
+        const pageWrapper = document.getElementById('page-wrapper'); // This is the scrollable container
+
+        const sidebarLogoutBtn = document.getElementById('sidebar-logout-btn');
+        const loginPageLoginBtn = document.getElementById('login-btn');
+        const loginPageLogoutBtn = document.getElementById('logout-btn');
+        const userStatusText = document.getElementById('user-status');
+        const profileUserNameInput = document.getElementById('user-name'); // Input for user's name on profile page
+
+        // Chart.js instances (global scope to manage lifecycle)
+        let xpChartInstance = null;
+        let accuracyChartInstance = null;
+
+        // Session data (mock for demonstration)
+        const sessionHistory = []; // Stores objects like { question: "...", answer: "..." }
+
+        // Gemini API Configuration
+        const apiKey = "***"; // API Key provided by the user
+        console.log("Gemini API Key (explicitly set):", apiKey);
+        const textGenerationModelUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+        // Firebase variables
+        let app;
+        let auth;
+        let userId = 'guest'; // Default to guest
+
+        // --- Firebase Initialization and Auth State Management ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyC0_RD1C50XZFDa8QGHR2xYGDMQ_0utRyw",
+            authDomain: "exam-whispers.firebaseapp.com",
+            projectId: "exam-whispers",
+            storageBucket: "exam-whispers.appspot.com",
+            messagingSenderId: "438582593358",
+            appId: "1:438582593358:web:2688a6ded26cc275cbc01f",
+            measurementId: "G-GRKQHX9DN1"
+            };
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+
+
+        if (firebaseConfig) {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+
+            // Listen for auth state changes
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    // User is signed in.
+                    userId = user.uid;
+                    userStatusText.textContent = `Logged in as: ${user.isAnonymous ? 'Guest User' : user.email || user.uid}`;
+                    sidebarLogoutBtn.classList.remove('hidden');
+                    loginPageLogoutBtn.classList.remove('hidden');
+                    loginPageLoginBtn.classList.add('hidden');
+                    // Update profile name if it's the default placeholder
+                    if (profileUserNameInput && profileUserNameInput.value === "Alex Doe") {
+                         profileUserNameInput.value = user.isAnonymous ? "Guest Learner" : (user.email ? user.email.split('@')[0] : `User-${user.uid.substring(0, 5)}`);
+                    }
+                    // Hide Login link, show Profile link
+                    document.querySelector('.nav-link[data-page-id="login"]').classList.add('hidden');
+
+                } else {
+                    // User is signed out.
+                    userId = 'guest';
+                    userStatusText.textContent = 'Not logged in.';
+                    sidebarLogoutBtn.classList.add('hidden');
+                    loginPageLogoutBtn.classList.add('hidden');
+                    loginPageLoginBtn.classList.remove('hidden');
+                    // Reset profile name if it was set by anonymous login
+                    if (profileUserNameInput && profileUserNameInput.value.includes("Guest Learner") || profileUserNameInput.value.includes("User-")) {
+                        profileUserNameInput.value = "Alex Doe"; // Reset to default placeholder
+                    }
+                    // Show Login link, hide Profile link
+                    document.querySelector('.nav-link[data-page-id="login"]').classList.remove('hidden');
+                }
+
+                const settingsMap = {
+  darkModeToggle: "darkMode",
+  soundEffectsToggle: "soundEffects",
+  voiceAssistantToggle: "voiceAssistant",
+  pushNotificationsToggle: "pushNotifications",
+  "voice-select": "assistantVoice"
+};
+
+const savedSettings = JSON.parse(localStorage.getItem("userSettings")) || {};
+
+// Apply saved settings on load
+for (const [elementId, settingKey] of Object.entries(settingsMap)) {
+  const el = document.getElementById(elementId);
+  if (!el) continue;
+
+  // Checkboxes
+  if (el.type === "checkbox") {
+    el.checked = savedSettings[settingKey] ?? el.checked;
+
+    el.addEventListener("change", () => {
+      savedSettings[settingKey] = el.checked;
+      localStorage.setItem("userSettings", JSON.stringify(savedSettings));
+    });
+  }
+
+  // Dropdown
+  if (el.tagName === "SELECT") {
+    el.value = savedSettings[settingKey] || el.value;
+
+    el.addEventListener("change", () => {
+      savedSettings[settingKey] = el.value;
+      localStorage.setItem("userSettings", JSON.stringify(savedSettings));
+    });
+  }
+}
+
+            });
+
+            // Initial sign-in attempt
+            async function initialSignIn() {
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        showMessage('Signed in with custom token!', 'success');
+                    } else {
+                        await signInAnonymously(auth);
+                        showMessage('Signed in anonymously!', 'success');
+                    }
+                } catch (error) {
+                    console.error("Firebase Auth Error:", error);
+                    showMessage(`Authentication failed: ${error.message}`, 'error');
+                }
+            }
+            initialSignIn(); // Call on script load
+        } else {
+            console.error("Firebase config not available. Cannot initialize Firebase.");
+            showMessage("Firebase not initialized. Check configuration.", "error");
+        }
+
+
+        // --- Utility function for displaying messages (instead of alert) ---
+        function showMessage(message, type = 'info') {
+            const messageBox = document.createElement('div');
+            messageBox.className = `fixed bottom-4 right-4 p-4 rounded-lg shadow-lg text-white z-50 transition-all duration-300 transform translate-x-full opacity-0`;
+            if (type === 'success') {
+                messageBox.classList.add('bg-green-500');
+            } else if (type === 'error') {
+                messageBox.classList.add('bg-red-500');
+            } else {
+                messageBox.classList.add('bg-blue-500');
+            }
+            messageBox.textContent = message;
+
+            document.body.appendChild(messageBox);
+
+            // Animate in
+            setTimeout(() => {
+                messageBox.classList.remove('translate-x-full', 'opacity-0');
+                messageBox.classList.add('translate-x-0', 'opacity-100');
+            }, 50);
+
+            // Animate out and remove
+            setTimeout(() => {
+                messageBox.classList.remove('translate-x-0', 'opacity-100');
+                messageBox.classList.add('translate-x-full', 'opacity-0');
+                messageBox.addEventListener('transitionend', () => messageBox.remove());
+            }, 3000);
+        }
+
+        // --- Page-specific Script Execution (Call this after a page is made active) ---
+        function executePageScripts(pageId) {
+            // Logic for Home page (Ask AI, Quiz Challenge)
+            if (pageId === 'home') {
+                const questionInput = document.getElementById('question-input');
+                const askButton = document.getElementById('ask-button');
+                const aiAnswerDiv = document.getElementById('ai-answer');
+                const quizOptionsDiv = document.getElementById('quiz-options');
+                const micButton = document.getElementById('mic-button');
+                const sessionTrackerDiv = document.getElementById('session-tracker');
+
+                // Update session tracker on page load
+                updateSessionTracker();
+
+                // Speech Recognition setup
+                let recognition;
+                let isListening = false;
+
+                // Check for Web Speech API compatibility
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) {
+                    micButton.disabled = true;
+                    micButton.title = "Speech recognition not supported in this browser.";
+                    console.warn("Web Speech API not supported in this browser.");
+                } else {
+                    recognition = new SpeechRecognition();
+                    recognition.continuous = false; // Only get one result per recognition instance
+                    recognition.interimResults = false; // Don't show interim results
+                    recognition.lang = 'en-US';
+
+                    recognition.onstart = () => {
+                        isListening = true;
+                        micButton.classList.add('mic-active');
+                        micButton.innerHTML = '<i class="fa-solid fa-microphone-lines text-2xl text-white"></i>';
+                        questionInput.placeholder = "Listening...";
+                    };
+
+                    recognition.onresult = (event) => {
+                        const transcript = event.results[0][0].transcript;
+                        questionInput.value = transcript;
+                        questionInput.focus(); // Keep focus on input after voice
+                    };
+
+                    recognition.onerror = (event) => {
+                        console.error('Speech recognition error:', event.error);
+                        showMessage(`Voice input error: ${event.error}`, 'error');
+                        isListening = false;
+                        micButton.classList.remove('mic-active');
+                        micButton.innerHTML = '<i class="fa-solid fa-microphone-lines text-2xl"></i>';
+                        questionInput.placeholder = "Explain anything...";
+                    };
+
+                    recognition.onend = () => {
+                        isListening = false;
+                        micButton.classList.remove('mic-active');
+                        micButton.innerHTML = '<i class="fa-solid fa-microphone-lines text-2xl"></i>';
+                        questionInput.placeholder = "Explain anything...";
+                    };
+
+                    if (micButton) {
+                        // Remove previous listener to avoid multiple attachments
+                        const oldMicClickHandler = micButton.clickHandler;
+                        if (oldMicClickHandler) {
+                            micButton.removeEventListener('click', oldMicClickHandler);
+                        }
+                        micButton.clickHandler = () => {
+                            if (isListening) {
+                                recognition.stop();
+                            } else {
+                                try {
+                                    recognition.start();
+                                    showMessage('Listening for your question...', 'info');
+                                } catch (e) {
+                                    console.error('Error starting speech recognition:', e);
+                                    showMessage('Failed to start voice input. Please check microphone permissions.', 'error');
+                                }
+                            }
+                        };
+                        micButton.addEventListener('click', micButton.clickHandler);
+                    }
+                }
+
+                if (askButton) {
+                    // Remove previous event listener to prevent multiple bindings on page re-activation
+                    const oldAskButton = askButton;
+                    const newAskButton = oldAskButton.cloneNode(true);
+                    oldAskButton.parentNode.replaceChild(newAskButton, oldAskButton);
+                    const currentAskButton = newAskButton;
+
+                    currentAskButton.onclick = async () => {
+                        const question = questionInput.value.trim();
+
+                        // Always clear input, previous answer, and quiz
+                        questionInput.value = "";
+                        aiAnswerDiv.innerHTML = "";
+                        quizOptionsDiv.innerHTML = "";
+
+                        if (!question) {
+                            aiAnswerDiv.innerHTML = '<p class="text-red-400">Please enter a question.</p>';
+                            showMessage('Please enter a question.', 'error');
+                            return;
+                        }
+
+                        // Add visual feedback
+                        aiAnswerDiv.innerHTML = '<p class="text-indigo-400">Thinking...</p>';
+
+                        try {
+                            // Call Gemini API for the answer
+                            let chatHistory = [];
+                            chatHistory.push({ role: "user", parts: [{ text: `Explain "${question}" concisely and clearly, suitable for a study assistant. Keep the answer around 100-150 words.` }] });
+                            const answerPayload = { contents: chatHistory };
+
+                            const answerResponse = await fetch(textGenerationModelUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(answerPayload)
+                            });
+
+                            if (!answerResponse.ok) {
+                                // Log full error response for debugging
+                                const errorText = await answerResponse.text();
+                                console.error("API Error Response:", errorText);
+                                throw new Error(`HTTP error! Status: ${answerResponse.status} - ${errorText}`);
+                            }
+
+                            const answerResult = await answerResponse.json();
+                            let aiAnswer = "Could not generate an answer.";
+                            if (answerResult.candidates && answerResult.candidates.length > 0 &&
+                                answerResult.candidates[0].content && answerResult.candidates[0].content.parts &&
+                                answerResult.candidates[0].content.parts.length > 0) {
+                                aiAnswer = answerResult.candidates[0].content.parts[0].text;
+                            } else {
+                                throw new Error("Unexpected API response structure for answer.");
+                            }
+
+                            aiAnswerDiv.innerHTML = `<p>${aiAnswer}</p>`;
+
+                            // Now, generate the quiz based on the AI's answer
+                            await generateAndDisplayQuiz(aiAnswer, question);
+
+                        } catch (error) {
+                            console.error('Error asking AI or generating quiz:', error);
+                            aiAnswerDiv.innerHTML = `<p class="text-red-400">Failed to get AI response or generate quiz: ${error.message}</p>`;
+                            showMessage(`Failed: ${error.message}`, 'error');
+                        }
+                    };
+                }
+
+                async function generateAndDisplayQuiz(topicForQuiz, originalQuestion) {
+                    quizOptionsDiv.innerHTML = '<p class="text-indigo-400">Generating quiz...</p>';
+                    try {
+                        let chatHistory = [];
+                        // Prompt for structured quiz data (question, 4 options, correct answer)
+                        chatHistory.push({
+                            role: "user",
+                            parts: [{ text: `Based on the following text, create a single multiple-choice quiz question with 4 distinct options and indicate the correct answer. The question should directly relate to the content provided.\n\nText: "${topicForQuiz}"\n\nProvide the output as a JSON object with 'question' (string), 'options' (array of 4 strings), and 'answer' (string, matching one of the options).` }]
+                        });
+
+                        const quizPayload = {
+                            contents: chatHistory,
+                            generationConfig: {
+                                responseMimeType: "application/json",
+                                responseSchema: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        "question": { "type": "STRING" },
+                                        "options": {
+                                            "type": "ARRAY",
+                                            "items": { "type": "STRING" },
+                                            "minItems": 4,
+                                            "maxItems": 4
+                                        },
+                                        "answer": { "type": "STRING" }
+                                    },
+                                    "required": ["question", "options", "answer"]
+                                }
+                            }
+                        };
+
+                        const quizResponse = await fetch(textGenerationModelUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(quizPayload)
+                        });
+
+                        if (!quizResponse.ok) {
+                             // Log full error response for debugging
+                            const errorText = await quizResponse.text();
+                            console.error("API Error Response (Quiz):", errorText);
+                            throw new Error(`HTTP error! Status: ${quizResponse.status} - ${errorText}`);
+                        }
+
+                        const quizResult = await quizResponse.json();
+
+                        let quizData;
+                        if (quizResult.candidates && quizResult.candidates.length > 0 &&
+                            quizResult.candidates[0].content && quizResult.candidates[0].content.parts &&
+                            quizResult.candidates[0].content.parts.length > 0) {
+                            try {
+                                const rawJson = quizResult.candidates[0].content.parts[0].text;
+                                quizData = JSON.parse(rawJson);
+                                // Basic validation of the parsed structure
+                                if (!quizData.question || !Array.isArray(quizData.options) || quizData.options.length !== 4 || !quizData.answer) {
+                                    throw new Error("Invalid quiz data structure from API.");
+                                }
+                                // Ensure the correct answer is one of the options (case-insensitive for robustness)
+                                const foundAnswer = quizData.options.find(opt => opt.toLowerCase() === quizData.answer.toLowerCase());
+                                if (foundAnswer) {
+                                    quizData.answer = foundAnswer; // Use the exact case from options
+                                } else {
+                                    // Fallback if answer isn't a direct match (e.g., model slightly rephrased)
+                                    // This is a common challenge with LLMs generating structured output.
+                                    // For now, we'll pick the first option or keep the generated answer.
+                                    // A more robust solution might involve another LLM call to find best match or re-generate.
+                                    console.warn("Correct answer from API not found in generated options. Attempting best fit or using first option.");
+                                    const bestFitOption = quizData.options.find(opt => quizData.answer.toLowerCase().includes(opt.toLowerCase()) || opt.toLowerCase().includes(quizData.answer.toLowerCase()));
+                                    if (bestFitOption) {
+                                        quizData.answer = bestFitOption;
+                                    } else {
+                                        quizData.answer = quizData.options[0]; // Default to first option
+                                    }
+                                }
+
+                            } catch (parseError) {
+                                throw new Error(`Error parsing quiz JSON: ${parseError.message} Raw: ${quizResult.candidates[0].content.parts[0].text}`);
+                            }
+                        } else {
+                            throw new Error("Unexpected API response structure for quiz.");
+                        }
+
+                        quizOptionsDiv.innerHTML = `
+                            <p class="font-bold mb-3">${quizData.question}</p>
+                            ${quizData.options.map((option, index) => `
+                                <button class="quiz-option-button bg-slate-700 hover:bg-slate-600 p-3 rounded-lg text-left w-full flex items-start transition"
+                                    data-option="${option}"
+                                    data-correct-answer="${quizData.answer}">
+                                    ${String.fromCharCode(65 + index)}. ${option}
+                                </button>
+                            `).join('')}
+                        `;
+                        document.querySelectorAll('.quiz-option-button').forEach(button => {
+                            button.addEventListener('click', (event) => {
+                                const selectedOption = event.target.dataset.option;
+                                const correctAnswer = event.target.dataset.correctAnswer;
+                                const isCorrect = (selectedOption === correctAnswer);
+
+                                document.querySelectorAll('.quiz-option-button').forEach(btn => {
+                                    btn.classList.remove('bg-green-600', 'bg-red-600', 'hover:bg-slate-600');
+                                    if (btn.dataset.option === correctAnswer) {
+                                        btn.classList.add('bg-green-600');
+                                    } else if (btn.dataset.option === selectedOption && !isCorrect) {
+                                        btn.classList.add('bg-red-600');
+                                    }
+                                    btn.disabled = true; // Disable all buttons after one selection
+                                });
+
+                                showMessage(isCorrect ? 'Correct!' : `Incorrect! The answer was "${correctAnswer}"`, isCorrect ? 'success' : 'error');
+
+                                logQuizAttempt(
+                                    originalQuestion, // Log original question
+                                    topicForQuiz,     // Log AI's answer as context
+                                    {
+                                        quiz_question: quizData.question,
+                                        selected_option: selectedOption,
+                                        correct_answer: correctAnswer,
+                                        is_correct: isCorrect
+                                    }
+                                );
+
+                                // Optional: Clear quiz after a short delay
+                                setTimeout(() => {
+                                    quizOptionsDiv.innerHTML = '<p>Quiz completed! Ask another question for a new challenge.</p>';
+                                }, 2000);
+                            });
+                        });
+                        
+
+                    } catch (error) {
+                        console.error('Error generating quiz:', error);
+                        quizOptionsDiv.innerHTML = `<p class="text-red-400">Failed to generate quiz: ${error.message}. Please try again.</p>`;
+                        showMessage(`Failed to generate quiz: ${error.message}`, 'error');
+                    }
+                }
+
+                function logQuizAttempt(originalQuestion, aiAnswer, quizAttemptDetails) {
+                    const sessionEntry = {
+                        timestamp: new Date().toLocaleTimeString(),
+                        question: originalQuestion,
+                        answer: aiAnswer.substring(0, Math.min(aiAnswer.length, 100)) + (aiAnswer.length > 100 ? '...' : ''), // Truncate answer for display
+                        quiz: quizAttemptDetails.quiz_question,
+                        isCorrect: quizAttemptDetails.is_correct
+                    };
+                    sessionHistory.unshift(sessionEntry); // Add to the beginning
+
+                    // Keep only last 5 entries for display purposes
+                    if (sessionHistory.length > 5) {
+                        sessionHistory.pop();
+                    }
+                    updateSessionTracker();
+                    updateHistoryPage(); // Also update the history page
+                }
+
+                function updateSessionTracker() {
+                    if (sessionTrackerDiv) {
+                        sessionTrackerDiv.innerHTML = ''; // Clear previous entries
+                        if (sessionHistory.length === 0) {
+                            sessionTrackerDiv.innerHTML = '<p class="text-slate-400">No recent activity.</p>';
+                        } else {
+                            sessionHistory.forEach(entry => {
+                                const statusColor = entry.isCorrect ? 'text-emerald-400' : 'text-red-400';
+                                sessionTrackerDiv.innerHTML += `
+                                    <div class="flex items-center space-x-2">
+                                        <i class="fas fa-check-circle ${statusColor}"></i>
+                                        <p class="text-sm"><strong>Q:</strong> ${entry.question.substring(0, Math.min(entry.question.length, 30))}... <span class="text-xs text-slate-500">(${entry.timestamp})</span></p>
+                                    </div>
+                                `;
+                            });
+                        }
+                    }
+                }
+            }
+
+            // Logic for Dashboard page (Charts)
+            if (pageId === 'dashboard') {
+                const xpChartCanvas = document.getElementById('xp-chart-canvas');
+                const accuracyChartCanvas = document.getElementById('accuracy-chart-canvas');
+
+                // Ensure canvases exist before trying to get context
+                if (!xpChartCanvas || !accuracyChartCanvas) {
+                    console.warn("Dashboard charts not found in DOM for initialization.");
+                    return;
+                }
+
+                // Destroy previous chart instances if they exist
+                if (xpChartInstance) {
+                    xpChartInstance.destroy();
+                }
+                if (accuracyChartInstance) {
+                    accuracyChartInstance.destroy();
+                }
+
+                // Sample Data for XP Chart
+                const xpData = {
+                    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
+                    datasets: [{
+                        label: 'XP Gained',
+                        data: [200, 350, 400, 550, 700, 850],
+                        borderColor: '#10b981', // emerald-500
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        tension: 0.3,
+                        fill: true,
+                        pointBackgroundColor: '#10b981',
+                        pointBorderColor: '#fff',
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                };
+
+                // XP Chart Options
+                const xpOptions = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: '#334155' // slate-700
+                            },
+                            ticks: {
+                                color: '#cbd5e1' // slate-300
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#334155' // slate-700
+                            },
+                            ticks: {
+                                color: '#cbd5e1' // slate-300
+                            }
+                        }
+                    }
+                };
+
+                // Create XP Chart
+                xpChartInstance = new Chart(xpChartCanvas, {
+                    type: 'line',
+                    data: xpData,
+                    options: xpOptions
+                });
+
+
+                // Sample Data for Accuracy Chart
+                const accuracyData = {
+                    labels: ['Science', 'History', 'Math', 'English', 'Art'],
+                    datasets: [{
+                        label: 'Accuracy %',
+                        data: [85, 70, 90, 75, 60],
+                        backgroundColor: [
+                            'rgba(79, 70, 229, 0.8)', // indigo-600
+                            'rgba(16, 185, 129, 0.8)', // emerald-500
+                            'rgba(234, 179, 8, 0.8)', // amber-500
+                            'rgba(239, 68, 68, 0.8)', // red-500
+                            'rgba(148, 163, 184, 0.8)' // slate-400
+                        ],
+                        borderColor: '#0f172a', // slate-900
+                        borderWidth: 2
+                    }]
+                };
+
+                // Accuracy Chart Options
+                const accuracyOptions = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: '#cbd5e1' // slate-300
+                            }
+                        },
+                        title: {
+                            display: false
+                        }
+                    }
+                };
+
+                // Create Accuracy Chart
+                accuracyChartInstance = new Chart(accuracyChartCanvas, {
+                    type: 'doughnut',
+                    data: accuracyData,
+                    options: accuracyOptions
+                });
+            }
+
+            // Logic for Profile page
+            if (pageId === 'profile') {
+                const avatarUpload = document.getElementById('avatar-upload');
+                const avatarPreview = document.getElementById('avatar-preview');
+                const userNameInput = document.getElementById('user-name');
+                const interestTagsDiv = document.getElementById('interest-tags');
+                const addInterestInput = document.getElementById('add-interest-input');
+                const saveProfileBtn = document.getElementById('save-profile-btn');
+
+                // Avatar Upload
+                if (avatarUpload && avatarPreview) {
+                    avatarUpload.addEventListener('change', function(event) {
+                        const file = event.target.files[0];
+                        if (file) {
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                avatarPreview.src = e.target.result;
+                            };
+                            reader.readAsDataURL(file);
+                        }
+                    });
+                }
+
+                // Interest Tags
+                if (interestTagsDiv && addInterestInput) {
+                    const addTag = (tagName) => {
+                        if (tagName && !Array.from(interestTagsDiv.querySelectorAll('span')).some(span => span.textContent.trim().toLowerCase() === tagName.toLowerCase())) {
+                            const tagSpan = document.createElement('span');
+                            tagSpan.className = 'bg-indigo-500/50 text-indigo-200 px-3 py-1 rounded-full text-sm flex items-center gap-2';
+                            tagSpan.innerHTML = `${tagName}<button class="text-indigo-100 hover:text-white remove-tag">×</button>`;
+                            interestTagsDiv.insertBefore(tagSpan, addInterestInput); // Insert before the input
+                            addInterestInput.value = ''; // Clear input
+                            attachRemoveListeners(); // Re-attach listeners for newly added tag
+                        }
+                    };
+
+                    // Attach/Re-attach listeners for dynamically added tags
+                    const attachRemoveListeners = () => {
+                        interestTagsDiv.querySelectorAll('.remove-tag').forEach(button => {
+                            // Only add listener if not already attached (to prevent multiple listeners)
+                            if (!button.dataset.listenerAttached) {
+                                button.addEventListener('click', (event) => {
+                                    event.target.closest('span').remove();
+                                });
+                                button.dataset.listenerAttached = 'true';
+                            }
+                        });
+                    };
+                    attachRemoveListeners(); // Attach initially for pre-existing tags
+
+
+                    // Add new tag on Enter key
+                    addInterestInput.addEventListener('keydown', function(event) {
+                        if (event.key === 'Enter') {
+                            event.preventDefault(); // Prevent form submission
+                            addTag(this.value.trim());
+                        }
+                    });
+
+                    // Note: In a real app, you'd save these changes to a backend
+                }
+
+                // Save Profile Button
+                if (saveProfileBtn) {
+                    // Remove previous listener to avoid multiple calls
+                    const oldSaveBtn = saveProfileBtn;
+                    const newSaveBtn = oldSaveBtn.cloneNode(true);
+                    oldSaveBtn.parentNode.replaceChild(newSaveBtn, oldSaveBtn);
+                    const currentSaveBtn = newSaveBtn;
+
+                    currentSaveBtn.onclick = () => {
+                        const userName = userNameInput.value.trim();
+                        const interests = Array.from(interestTagsDiv.querySelectorAll('span'))
+                                            .map(span => span.textContent.replace('×', '').trim())
+                                            .filter(tag => tag !== ''); // Filter out empty strings if any
+                        const motivationQuote = document.querySelector('#profile textarea').value.trim();
+
+                        console.log('Saving Profile:');
+                        console.log('User Name:', userName);
+                        console.log('Interests:', interests);
+                        console.log('Motivation Quote:', motivationQuote);
+
+                        showMessage('Profile saved successfully!', 'success');
+                    };
+                }
+                // Update profile user ID display
+                if (auth && auth.currentUser) {
+                    profileUserNameInput.value = auth.currentUser.isAnonymous ? "Guest Learner" : (auth.currentUser.email ? auth.currentUser.email.split('@')[0] : `User-${auth.currentUser.uid.substring(0, 5)}`);
+                } else {
+                    profileUserNameInput.value = "Alex Doe"; // Default placeholder
+                }
+            }
+
+            // Logic for History page
+            if (pageId === 'history') {
+                // This page already has mock data in HTML.
+                // If we were fetching from a backend, we'd do it here.
+                // For now, we'll just ensure the session history is reflected.
+                updateHistoryPage();
+            }
+
+            function updateHistoryPage() {
+                const historyListDiv = document.getElementById('history-list');
+                if (historyListDiv) {
+                    historyListDiv.innerHTML = ''; // Clear existing content
+                    if (sessionHistory.length === 0) {
+                        historyListDiv.innerHTML = '<p class="text-slate-400">No recent activity.</p>';
+                    } else {
+                        sessionHistory.forEach(entry => {
+                            const historyItem = document.createElement('a');
+                            historyItem.href = "#"; // Make it clickable, though it won't navigate here
+                            historyItem.className = "block bg-slate-800 p-4 rounded-lg hover:bg-slate-700 transition";
+                            historyItem.innerHTML = `
+                                <p class="font-bold text-emerald-400">Q: ${entry.question}</p>
+                                <p class="text-slate-400 text-sm mt-1">A: ${entry.answer}</p>
+                                <p class="text-slate-500 text-xs mt-1">Quiz Answer: ${entry.isCorrect ? 'Correct' : 'Incorrect'} (${entry.quiz})</p>
+                            `;
+                            historyListDiv.appendChild(historyItem);
+                        });
+                    }
+                }
+            }
+
+
+            // Logic for Settings page
+            if (pageId === 'settings') {
+                const toggleCheckboxes = document.querySelectorAll('.toggle-checkbox');
+                const voiceSelect = document.getElementById('voice-select');
+                const saveSettingsBtn = document.getElementById('save-settings-btn');
+                const colorThemeButtons = document.querySelectorAll('#color-theme-buttons button');
+
+                // Load saved settings from localStorage
+                const savedSettings = JSON.parse(localStorage.getItem('userSettings')) || {};
+
+                // === Apply toggles ===
+                toggleCheckboxes.forEach(checkbox => {
+                    const settingName = checkbox.id || checkbox.closest('label').previousElementSibling.textContent.trim().replace(/\s+/g, '');
+                    if (savedSettings[settingName] !== undefined) {
+                        checkbox.checked = savedSettings[settingName];
+                    }
+                    // Remove previous listener to prevent duplicates
+                    checkbox.removeEventListener('change', checkbox.changeHandler);
+                    checkbox.changeHandler = () => {
+                        savedSettings[settingName] = checkbox.checked;
+                        localStorage.setItem('userSettings', JSON.stringify(savedSettings));
+                    };
+                    checkbox.addEventListener('change', checkbox.changeHandler);
+                });
+
+                // === Apply voice ===
+                if (savedSettings.assistantVoice) {
+                    voiceSelect.value = savedSettings.assistantVoice;
+                }
+                voiceSelect.removeEventListener('change', voiceSelect.changeHandler);
+                voiceSelect.changeHandler = () => {
+                    savedSettings.assistantVoice = voiceSelect.value;
+                    localStorage.setItem('userSettings', JSON.stringify(savedSettings));
+                };
+                voiceSelect.addEventListener('change', voiceSelect.changeHandler);
+
+                // === Apply theme selection ===
+                // This block ensures the correct theme is applied on page load of settings page
+                if (savedSettings.themeColor) {
+                    colorThemeButtons.forEach(btn => {
+                        btn.classList.remove('ring-2', 'ring-offset-2', 'ring-offset-slate-800', 'ring-white');
+                        if (btn.dataset.themeColor === savedSettings.themeColor) {
+                            btn.classList.add('ring-2', 'ring-offset-2', 'ring-offset-slate-800', 'ring-white');
+                        }
+                    });
+                    document.body.dataset.theme = savedSettings.themeColor;
+                } else {
+                     // Default to indigo if no theme is saved
+                    document.body.dataset.theme = "indigo";
+                    // Also ensure the indigo button is active if no theme is explicitly set
+                    document.querySelector('[data-theme-color="indigo"]').classList.add('ring-2', 'ring-offset-2', 'ring-offset-slate-800', 'ring-white');
+                }
+
+
+                colorThemeButtons.forEach(button => {
+                    // Remove previous listener to prevent duplicates
+                    button.removeEventListener('click', button.clickHandler);
+                    button.clickHandler = () => {
+                        colorThemeButtons.forEach(btn => {
+                            btn.classList.remove('ring-2', 'ring-offset-2', 'ring-offset-slate-800', 'ring-white');
+                        });
+                        button.classList.add('ring-2', 'ring-offset-2', 'ring-offset-slate-800', 'ring-white');
+                        savedSettings.themeColor = button.dataset.themeColor;
+                        localStorage.setItem('userSettings', JSON.stringify(savedSettings));
+                        document.body.dataset.theme = savedSettings.themeColor;
+                    };
+                    button.addEventListener('click', button.clickHandler);
+                });
+
+                // === Save button action ===
+                if (saveSettingsBtn) {
+                    if (!saveSettingsBtn.dataset.listenerAttached) {
+                        saveSettingsBtn.addEventListener('click', () => {
+                            showMessage('Settings saved successfully!', 'success');
+                        });
+                        saveSettingsBtn.dataset.listenerAttached = 'true';
+                    }
+                }
+            }
+
+            // Logic for Login page
+            if (pageId === 'login') {
+                // Login button handler (for this simple version, just logs status)
+                if (loginPageLoginBtn) {
+                    loginPageLoginBtn.removeEventListener('click', loginPageLoginBtn.clickHandler);
+                    loginPageLoginBtn.clickHandler = async () => {
+                        if (auth && !auth.currentUser) {
+                            try {
+                                if (initialAuthToken) {
+                                    await signInWithCustomToken(auth, initialAuthToken);
+                                    showMessage('Signed in with custom token!', 'success');
+                                } else {
+                                    await signInAnonymously(auth);
+                                    showMessage('Signed in anonymously!', 'success');
+                                }
+                                activatePage('home'); // Redirect to home on successful login/sign-in
+                            } catch (error) {
+                                console.error("Login Error:", error);
+                                showMessage(`Login failed: ${error.message}`, 'error');
+                            }
+                        } else if (auth && auth.currentUser) {
+                            showMessage(`Already logged in as ${auth.currentUser.isAnonymous ? 'Guest User' : auth.currentUser.email || auth.currentUser.uid}.`, 'info');
+                        }
+                    };
+                    loginPageLoginBtn.addEventListener('click', loginPageLoginBtn.clickHandler);
+                }
+
+                // Logout button handler on login page
+                if (loginPageLogoutBtn) {
+                    loginPageLogoutBtn.removeEventListener('click', loginPageLogoutBtn.clickHandler);
+                    loginPageLogoutBtn.clickHandler = async () => {
+                        try {
+                            if (auth) {
+                                await signOut(auth);
+                                showMessage('Logged out successfully!', 'success');
+                                activatePage('login'); // Redirect to login page after logout
+                            }
+                        } catch (error) {
+                            console.error("Logout Error:", error);
+                            showMessage(`Logout failed: ${error.message}`, 'error');
+                        }
+                    };
+                    loginPageLogoutBtn.addEventListener('click', loginPageLogoutBtn.clickHandler);
+                }
+            }
+        }
+
+        // --- Global Navigation and UI Logic ---
+
+        // Function to activate a page
+        function activatePage(pageId) {
+            // Deactivate all nav links
+            navLinks.forEach(link => link.classList.remove('active'));
+
+            // Deactivate all page content divs
+            pages.forEach(page => page.classList.remove('active'));
+
+            // Activate the corresponding nav link
+            const activeNavLink = document.querySelector(`.nav-link[data-page-id="${pageId}"]`);
+            if (activeNavLink) {
+                activeNavLink.classList.add('active');
+            }
+
+            // Activate the corresponding page content div
+            const activePage = document.getElementById(pageId);
+            if (activePage) {
+                activePage.classList.add('active');
+            }
+
+            // Execute page-specific scripts
+            executePageScripts(pageId);
+
+            // Hide sidebar on mobile after navigation
+            if (window.innerWidth < 768) { // md breakpoint in Tailwind is 768px
+                sidebar.classList.add('-translate-x-full');
+            }
+        }
+
+        // Event listeners for navigation links
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const pageId = link.dataset.pageId;
+                activatePage(pageId);
+            });
+        });
+
+        // Hamburger menu toggle for mobile sidebar
+        if (hamburgerMenu) {
+            hamburgerMenu.addEventListener('click', () => {
+                sidebar.classList.toggle('-translate-x-full');
+            });
+        }
+
+        // Header transparency on scroll
+        if (pageWrapper && mainHeader) {
+            pageWrapper.addEventListener('scroll', () => {
+                if (pageWrapper.scrollTop > 50) { // Adjust scroll threshold as needed
+                    mainHeader.classList.remove('header-opaque');
+                    mainHeader.classList.add('header-transparent');
+                } else {
+                    mainHeader.classList.remove('header-transparent');
+                    mainHeader.classList.add('header-opaque');
+                }
+            });
+        }
+
+        // --- Logout button in sidebar ---
+        if (sidebarLogoutBtn) {
+            sidebarLogoutBtn.addEventListener('click', async () => {
+                try {
+                    if (auth) {
+                        await signOut(auth);
+                        showMessage('Logged out successfully!', 'success');
+                        activatePage('login'); // Redirect to login page after logout
+                    }
+                } catch (error) {
+                    console.error("Sidebar Logout Error:", error);
+                    showMessage(`Logout failed: ${error.message}`, 'error');
+                }
+            });
+        }
+
+
+        // Initial page load: Activate the 'home' page and run its scripts
+        document.addEventListener('DOMContentLoaded', () => {
+            activatePage('home');
+            // Ensure header starts opaque on desktop or when not scrolled
+            if (window.innerWidth >= 768) {
+                mainHeader.classList.remove('header-transparent');
+                mainHeader.classList.add('header-opaque');
+            }
+
+            // Apply initial theme from local storage
+            const savedSettings = JSON.parse(localStorage.getItem('userSettings')) || {};
+            if (savedSettings.themeColor) {
+                document.body.dataset.theme = savedSettings.themeColor;
+            } else {
+                document.body.dataset.theme = "indigo"; // Default theme
+            }
+        });
+        // ✅ This script adds toggle + dropdown functionality with localStorage for the Settings page
+
+            const settingsMap = {
+            darkModeToggle: "darkMode",
+            soundEffectsToggle: "soundEffects",
+            voiceAssistantToggle: "voiceAssistant",
+            pushNotificationsToggle: "pushNotifications",
+            "voice-select": "assistantVoice"
+            };
+
+            const savedSettings = JSON.parse(localStorage.getItem("userSettings")) || {};
+
+            // Load and apply saved settings
+            window.addEventListener("DOMContentLoaded", () => {
+            for (const [elementId, settingKey] of Object.entries(settingsMap)) {
+                const el = document.getElementById(elementId);
+                if (!el) continue;
+
+                if (el.type === "checkbox") {
+                el.checked = savedSettings[settingKey] ?? el.checked;
+
+                el.addEventListener("change", () => {
+                    savedSettings[settingKey] = el.checked;
+                    localStorage.setItem("userSettings", JSON.stringify(savedSettings));
+                });
+                }
+
+                if (el.tagName === "SELECT") {
+                el.value = savedSettings[settingKey] || el.value;
+
+                el.addEventListener("change", () => {
+                    savedSettings[settingKey] = el.value;
+                    localStorage.setItem("userSettings", JSON.stringify(savedSettings));
+                });
+                }
+            }
+            });
+
+
+    </script>
+</body>
+</html>
+�
